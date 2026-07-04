@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SharePlate"
+version = "1.0.0"
+id = "artifacts/web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22333
+
+[services.development]
+run = "cd ../../frontend && npm run dev"
+
+[services.production]
+build = [ "npm", "--prefix", "frontend", "run", "build" ]
+publicDir = "frontend/dist"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22333"
+BASE_PATH = "/"

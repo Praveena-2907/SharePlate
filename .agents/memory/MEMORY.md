@@ -1,0 +1,1 @@
+- [Non-artifact frontend + proxy routing](non-monorepo-proxy-routing.md) — plain workflows (no artifact.toml) bind a port but the shared reverse proxy 404s at `/`; use a code-free routing-only artifact instead.

@@ -4,8 +4,9 @@ Share More. Waste Less. Feed Hope. A civic-tech platform connecting food donors,
 
 ## Run & Operate
 
-- The "Start application" workflow runs `cd frontend && npm run dev` on port 5000.
-- `cd frontend && npm run build` — production build
+- The app is served through a routing-only artifact registered at `artifacts/web` (previewPath `/`). Its workflow (`artifacts/web: web`) runs `cd ../../frontend && npm run dev` on port 22333 — this just launches the real app in `frontend/`, nothing else.
+- `artifacts/web/` contains ONLY `.replit-artifact/artifact.toml` — no application code. It exists purely so the platform's shared reverse proxy (which only routes paths registered via `artifact.toml`) forwards `/` to the frontend dev server. All real app code still lives exclusively in `frontend/`.
+- `cd frontend && npm run build` — production build (also what the artifact's production config invokes)
 
 ## Stack
 
@@ -44,7 +45,8 @@ Share More. Waste Less. Feed Hope. A civic-tech platform connecting food donors,
 
 ## Gotchas
 
-- The frontend is NOT registered as a Replit "artifact" — it's run via a plain workflow bound to port 5000. Screenshot/preview tooling that requires an `artifact_dir_name` won't find it; verify changes via curl/build instead.
+- The shared reverse proxy only routes paths registered via `.replit-artifact/artifact.toml`. A plain workflow (no artifact.toml) can bind a port and work over curl directly, but the Preview pane/proxy at `/` will 404. That's why `artifacts/web` exists — it's a routing-only registration, not a second copy of the app.
+- Screenshot/preview tooling needs `artifact_dir_name` — use `web` for this project (the `artifacts/web` dir), even though the real code lives in `frontend/`.
 
 ## Pointers
 
