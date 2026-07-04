@@ -1,45 +1,51 @@
-# [Project name]
+# SharePlate
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Share More. Waste Less. Feed Hope. A civic-tech platform connecting food donors, NGOs, volunteers, and administrators to rescue surplus food and distribute it to people in need.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- The "Start application" workflow runs `cd frontend && npm run dev` on port 5000.
+- `cd frontend && npm run build` — production build
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- React + Vite, React Router, Context API
+- Tailwind CSS for styling
+- lucide-react for icons
+- No backend, no database — frontend uses mock data only (`frontend/src/data/mockData.js`)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `frontend/` — the entire application (this is a plain project, not a pnpm workspace/monorepo package)
+  - `src/pages/Landing.jsx` — landing page
+  - `src/pages/auth/` — Login, Register, ForgotPassword, RoleSelection
+  - `src/pages/dashboards/` — DonorDashboard, NgoDashboard, VolunteerDashboard, AdminDashboard
+  - `src/context/AuthContext.jsx` — mock auth state (user, role, login, logout) via Context API + localStorage
+  - `src/data/mockData.js` — all mock data (stats, donations, ngos, volunteers, pendingApprovals, impactTimeline, activityFeed)
+  - `tailwind.config.js` — design system tokens (primary green #2E7D32, secondary orange #F59E0B, status colors, 16px radius)
+- `backend/` and `database/` — currently empty, reserved by the user for future backend work
+- `artifacts/`, `lib/`, `scripts/` — default Replit workspace scaffolding; explicitly NOT used for SharePlate. Do not add SharePlate code there.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The user explicitly required a plain `frontend/` + `backend/` + `database/` layout instead of the default pnpm monorepo/artifact system. The frontend is run directly via a custom workflow (`cd frontend && npm run dev`), not through the `createArtifact` system.
+- Current build is frontend-only with mock data. No API integration, no backend, no persistence beyond localStorage for the mock logged-in user.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Landing page (hero, features, how it works, stats, footer)
+- Auth pages: Login, Register, Forgot Password, Role Selection (Donor / NGO / Volunteer / Admin)
+- Role-specific dashboards with mock data for each of the four roles
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Do not use the pnpm monorepo/artifact structure (no `artifacts/`, `lib/`, `packages/`, workspaces) for SharePlate. All application code must live only in `frontend/`, `backend/`, `database/`.
+- No backend/API integration yet — frontend dashboards use mock data only, by explicit request.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The frontend is NOT registered as a Replit "artifact" — it's run via a plain workflow bound to port 5000. Screenshot/preview tooling that requires an `artifact_dir_name` won't find it; verify changes via curl/build instead.
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- N/A — this project intentionally does not use the pnpm workspace structure described in the `pnpm-workspace` skill.
