@@ -3,176 +3,219 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { listDonations, markDelivered, markPickup, markTransit } from "../../api/donations";
 import { extractErrorMessage } from "../../api/client";
+import { useAnalytics } from "../../hooks/useAnalytics";
 import NotificationsBell from "../../components/NotificationsBell";
-import { Heart, LogOut, Map, Navigation, CheckCircle2, Loader2 } from "lucide-react";
-
-const STEP_LABEL = {
-  assigned: "Awaiting Pickup",
-  picked_up: "Picked Up",
-  in_transit: "In Transit",
-};
+import { StatCard, StatCardSkeleton } from "../../components/ui/StatCard";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { InlineError } from "../../components/ui/ErrorState";
+import { SkeletonList } from "../../components/ui/SkeletonCard";
+import { StatusBadge } from "../../components/ui/Badge";
+import { ChartCard, SimpleBarChart } from "../../components/charts/TrendChart";
+import { RouteMap } from "../../components/maps/RouteMap";
+import {
+  Heart, LogOut, CheckCircle2, Loader2, Navigation,
+  Bike, Utensils, Activity, ChevronDown, ChevronUp,
+} from "lucide-react";
 
 export default function VolunteerDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: analytics, loading: analyticsLoading } = useAnalytics();
+
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   const fetchDonations = () => {
     setLoading(true);
     setError("");
     listDonations()
       .then(setDonations)
-      .catch((err) => setError(extractErrorMessage(err)))
+      .catch((e) => setError(extractErrorMessage(e)))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchDonations();
-  }, []);
+  useEffect(() => { fetchDonations(); }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
+  const handleLogout = () => { logout(); navigate("/"); };
 
-  const activeDeliveries = donations.filter((d) => ["assigned", "picked_up", "in_transit"].includes(d.status));
+  const activeDeliveries = donations.filter((d) =>
+    ["assigned", "picked_up", "in_transit"].includes(d.status)
+  );
+  const completedDeliveries = donations.filter((d) => d.status === "delivered");
 
   const runAction = async (id, action) => {
     setActionError("");
     setBusyId(id);
     try {
       const updated = await action(id);
-      setDonations((prev) => prev.map((d) => (d.id === id ? updated : d)));
-    } catch (err) {
-      setActionError(extractErrorMessage(err));
+      setDonations((p) => p.map((d) => (d.id === id ? updated : d)));
+    } catch (e) {
+      setActionError(extractErrorMessage(e));
     } finally {
       setBusyId(null);
     }
   };
 
-  const renderAction = (delivery) => {
-    if (delivery.status === "assigned") {
-      return (
-        <button onClick={() => runAction(delivery.id, markPickup)} disabled={busyId === delivery.id} className="flex-1 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-          {busyId === delivery.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Mark Picked Up</>}
-        </button>
-      );
-    }
-    if (delivery.status === "picked_up") {
-      return (
-        <button onClick={() => runAction(delivery.id, markTransit)} disabled={busyId === delivery.id} className="flex-1 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-          {busyId === delivery.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Navigation className="w-4 h-4" /> Mark In Transit</>}
-        </button>
-      );
-    }
-    return (
-      <button onClick={() => runAction(delivery.id, markDelivered)} disabled={busyId === delivery.id} className="flex-1 bg-primary hover:bg-primary-hover disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-        {busyId === delivery.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Mark Delivered</>}
-      </button>
-    );
+  const ACTION_CONFIG = {
+    assigned:   { label: "Mark Picked Up",  action: markPickup,    color: "bg-primary hover:bg-primary-hover" },
+    picked_up:  { label: "Mark In Transit", action: markTransit,   color: "bg-status-transit hover:bg-status-transit/90" },
+    in_transit: { label: "Mark Delivered",  action: markDelivered, color: "bg-status-success hover:bg-status-success/90" },
   };
+
+  const completedCount = analytics?.deliveries_completed ?? 0;
+  const mealsDelivered = analytics?.meals_delivered ?? 0;
+  const activeCount = analytics?.active_deliveries ?? activeDeliveries.length;
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-bg font-sans">
-      <nav className="flex items-center justify-between px-6 py-4 bg-white shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-4">
+      <nav className="flex items-center justify-between px-6 py-4 bg-white shadow-sm sticky top-0 z-50 border-b border-gray-50">
+        <div className="flex items-center gap-3">
           <Link to="/" className="text-xl font-bold text-primary flex items-center gap-2">
             <Heart className="w-6 h-6 fill-primary" />
-            SharePlate
+            <span className="hidden sm:block">SharePlate</span>
           </Link>
-          <span className="bg-status-transit/10 text-status-transit px-3 py-1 rounded-full text-sm font-medium">Volunteer Dashboard</span>
+          <span className="bg-status-transit/10 text-status-transit px-3 py-1 rounded-full text-xs font-semibold">Volunteer</span>
         </div>
         <div className="flex items-center gap-2">
           <NotificationsBell />
-          <div className="flex items-center gap-2 px-2">
-            <div className="w-2 h-2 rounded-full bg-status-success animate-pulse"></div>
-            <span className="text-sm font-medium text-gray-500">On Duty</span>
-          </div>
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors p-2">
-            <LogOut className="w-5 h-5" />
+          <span className="hidden sm:block font-medium text-ink text-sm px-2">{user?.full_name}</span>
+          <button onClick={handleLogout} aria-label="Log out" className="text-gray-400 hover:text-status-error transition-colors p-2 rounded-lg hover:bg-gray-50">
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </nav>
 
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ink mb-2">Hello, {user?.full_name || "Volunteer"}</h1>
-          <p className="text-gray-500">You have {activeDeliveries.length} active delivery routes today.</p>
+      <main className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full space-y-6">
+        <div className="animate-fadeIn">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-ink">My Deliveries</h1>
+          <p className="text-gray-400 text-sm mt-1">Manage active routes and track your impact.</p>
         </div>
 
-        {actionError && (
-          <div className="mb-6 bg-status-error/10 text-status-error text-sm font-medium px-4 py-3 rounded-xl">
-            {actionError}
-          </div>
+        {/* Analytics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-slide-up">
+          {analyticsLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ) : (
+            <>
+              <StatCard label="Deliveries Completed" value={completedCount} icon={CheckCircle2} iconBg="bg-status-success/10" iconColor="text-status-success" />
+              <StatCard label="Meals Delivered" value={mealsDelivered} icon={Utensils} iconBg="bg-secondary/10" iconColor="text-secondary" />
+              <StatCard label="Active Now" value={activeCount} icon={Activity} iconBg="bg-status-transit/10" iconColor="text-status-transit" />
+            </>
+          )}
+        </div>
+
+        {/* Chart */}
+        {analytics?.monthly_trend && (
+          <ChartCard title="Monthly Deliveries" subtitle="Your completed deliveries over the last 6 months" className="animate-fadeIn">
+            <SimpleBarChart
+              data={analytics.monthly_trend}
+              dataKey="deliveries"
+              label="Deliveries"
+              color="#3B82F6"
+              height={160}
+            />
+          </ChartCard>
         )}
 
-        {loading ? (
-          <div className="text-center py-16 text-gray-500 flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading deliveries...
-          </div>
-        ) : error ? (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-soft border border-gray-50">
-            <p className="text-status-error font-medium">{error}</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {activeDeliveries.map((delivery) => (
-              <div key={delivery.id} className="bg-white rounded-2xl shadow-soft overflow-hidden border border-gray-100">
-                <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
-                  <span className="font-mono text-sm text-gray-500 font-bold">Route #{delivery.id}</span>
-                  <span className="bg-status-transit text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">{STEP_LABEL[delivery.status]}</span>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-start gap-4 mb-6 relative">
-                    <div className="absolute left-6 top-8 bottom-2 w-0.5 bg-gray-200"></div>
+        {error && <InlineError message={error} onRetry={fetchDonations} />}
+        {actionError && <InlineError message={actionError} />}
 
-                    <div className="space-y-8 w-full">
-                      <div className="flex gap-4 items-start relative z-10">
-                        <div className="w-12 h-12 bg-white border-2 border-primary rounded-full flex items-center justify-center shrink-0">
-                          <Map className="w-5 h-5 text-primary" />
+        {/* Active deliveries */}
+        <div>
+          <h2 className="text-lg font-bold text-ink mb-4">
+            Active Routes
+            {activeDeliveries.length > 0 && (
+              <span className="ml-2 bg-status-transit/10 text-status-transit text-xs font-bold px-2 py-0.5 rounded-full">
+                {activeDeliveries.length}
+              </span>
+            )}
+          </h2>
+
+          {loading ? (
+            <SkeletonList count={2} />
+          ) : activeDeliveries.length === 0 ? (
+            <EmptyState
+              icon={CheckCircle2}
+              title="All deliveries complete"
+              description="You've completed all assigned deliveries. New assignments will appear here."
+            />
+          ) : (
+            <div className="space-y-4">
+              {activeDeliveries.map((delivery) => {
+                const cfg = ACTION_CONFIG[delivery.status];
+                const isExpanded = expandedId === delivery.id;
+                return (
+                  <article key={delivery.id} className="bg-white rounded-2xl shadow-soft border border-gray-50 overflow-hidden animate-fadeIn hover:shadow-soft-lg transition-shadow">
+                    {/* Card header */}
+                    <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex gap-4 items-start">
+                        <div className="w-11 h-11 rounded-xl bg-status-transit/10 flex items-center justify-center shrink-0">
+                          <Bike className="w-5 h-5 text-status-transit" />
                         </div>
                         <div>
-                          <p className="text-sm text-gray-500 font-medium uppercase tracking-wide">Pickup</p>
-                          <h4 className="text-lg font-bold text-ink">{delivery.pickup_address}</h4>
-                          <p className="text-gray-500 text-sm">{delivery.quantity} {delivery.unit} • {delivery.food_type}</p>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="font-bold text-ink text-sm">{delivery.food_type}</h3>
+                            <StatusBadge status={delivery.status} />
+                          </div>
+                          <p className="text-xs text-gray-400">{delivery.quantity} {delivery.unit} • #{delivery.id}</p>
                         </div>
                       </div>
-
-                      <div className="flex gap-4 items-start relative z-10">
-                        <div className="w-12 h-12 bg-white border-2 border-secondary rounded-full flex items-center justify-center shrink-0">
-                          <Navigation className="w-5 h-5 text-secondary" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500 font-medium uppercase tracking-wide">Dropoff</p>
-                          <h4 className="text-lg font-bold text-ink">Partner NGO</h4>
-                          <p className="text-gray-500 text-sm">Donation #{delivery.id}</p>
-                        </div>
+                      <div className="flex gap-2 items-center">
+                        {cfg && (
+                          <button
+                            onClick={() => runAction(delivery.id, cfg.action)}
+                            disabled={busyId === delivery.id}
+                            className={`${cfg.color} disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 shadow-soft`}
+                          >
+                            {busyId === delivery.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <><CheckCircle2 className="w-4 h-4" />{cfg.label}</>}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : delivery.id)}
+                          aria-label={isExpanded ? "Collapse route" : "Show route"}
+                          className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors"
+                        >
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex gap-3">
-                    <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-ink py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-                      <Navigation className="w-4 h-4" /> Get Directions
-                    </button>
-                    {renderAction(delivery)}
-                  </div>
+                    {/* Expandable route map */}
+                    {isExpanded && (
+                      <div className="px-5 pb-5 border-t border-gray-50 pt-4 animate-fadeIn">
+                        <RouteMap donation={delivery} />
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Completed deliveries (collapsed summary) */}
+        {!loading && completedDeliveries.length > 0 && (
+          <div>
+            <h2 className="text-lg font-bold text-ink mb-3 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-status-success" />
+              Completed
+              <span className="text-sm text-gray-400 font-normal">({completedDeliveries.length})</span>
+            </h2>
+            <div className="space-y-2">
+              {completedDeliveries.slice(0, 5).map((d) => (
+                <div key={d.id} className="bg-white rounded-xl border border-gray-50 px-4 py-3 flex items-center gap-3 text-sm animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-status-success shrink-0" />
+                  <span className="font-medium text-ink flex-1">{d.food_type}</span>
+                  <span className="text-gray-400">{d.quantity} {d.unit}</span>
                 </div>
-              </div>
-            ))}
-            {activeDeliveries.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-2xl shadow-soft border border-gray-50">
-                <div className="w-16 h-16 bg-status-success/10 text-status-success rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-ink mb-2">All caught up!</h3>
-                <p className="text-gray-500">You have completed all assigned deliveries. Thank you!</p>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </main>
