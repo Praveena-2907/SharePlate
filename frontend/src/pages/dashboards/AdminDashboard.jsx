@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import { listDonations } from "../../api/donations";
-import { pendingApprovals } from "../../data/mockData";
 import NotificationsBell from "../../components/NotificationsBell";
 import { StatCard, StatCardSkeleton } from "../../components/ui/StatCard";
 import { SkeletonCard } from "../../components/ui/SkeletonCard";
@@ -43,9 +42,32 @@ function PlatformHealthBar({ label, value, max, color = "bg-primary" }) {
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
   const { data: analytics, loading: analyticsLoading } = useAnalytics();
-  const [pendingList, setPendingList] = useState(pendingApprovals);
 
+const [pendingList, setPendingList] = useState([]);
+
+useEffect(() => {
+  fetch("http://127.0.0.1:8000/admin/pending-users")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("Pending users:", data);
+
+      if (!Array.isArray(data)) return;
+
+      const formattedData = data.map((user) => ({
+        id: user.id,
+        name: user.name,
+        type: user.role.toUpperCase(),
+        submittedAt: new Date().toISOString(),
+      }));
+
+      setPendingList(formattedData);
+    })
+    .catch((error) => {
+      console.error("Error fetching pending users:", error);
+    });
+}, []);
   const handleLogout = () => { logout(); navigate("/"); };
 
   const mealsRescued = analytics?.total_meals_rescued ?? 0;
@@ -277,12 +299,23 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={() => setPendingList((p) => p.filter((a) => a.id !== item.id))}
-                        aria-label={`Approve ${item.name}`}
-                        className="w-8 h-8 rounded-lg bg-status-success/10 hover:bg-status-success/20 text-status-success flex items-center justify-center transition-colors"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
+  onClick={() => {
+    fetch(`http://127.0.0.1:8000/admin/approve/${item.id}`, {
+      method: "PUT",
+    })
+      .then(() => {
+        setPendingList((p) =>
+          p.filter((a) => a.id !== item.id)
+        );
+      })
+      .catch((err) => console.error(err));
+  }}
+  aria-label={`Approve ${item.name}`}
+  className="w-8 h-8 rounded-lg bg-status-success/10 hover:bg-status-success/20 text-status-success flex items-center justify-center transition-colors"
+>
+  <Check className="w-4 h-4" />
+</button>
+                      
                       <button
                         onClick={() => setPendingList((p) => p.filter((a) => a.id !== item.id))}
                         aria-label={`Reject ${item.name}`}
