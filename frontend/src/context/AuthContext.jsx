@@ -1,32 +1,47 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { getCurrentUser, loginUser, registerUser } from "../api/auth";
+import { getToken, setToken } from "../api/client";
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = "shareplate_auth";
-
-function loadStoredUser() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => loadStoredUser());
+  const [user, setUser] = useState(null);
+  const [initializing, setInitializing] = useState(true);
 
-  const login = useCallback((userData) => {
-    setUser(userData);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setInitializing(false);
+      return;
+    }
+    getCurrentUser()
+      .then((profile) => setUser(profile))
+      .catch(() => {
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => setInitializing(false));
   }, []);
+
+  const login = useCallback(async ({ email, password }) => {
+    const { access_token } = await loginUser({ email, password });
+    setToken(access_token);
+    const profile = await getCurrentUser();
+    setUser(profile);
+    return profile;
+  }, []);
+
+  const register = useCallback(async (payload) => {
+    await registerUser(payload);
+    return login({ email: payload.email, password: payload.password });
+  }, [login]);
 
   const logout = useCallback(() => {
+    setToken(null);
     setUser(null);
-    window.localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const value = { user, role: user?.role ?? null, login, logout };
+  const value = { user, role: user?.role ?? null, initializing, login, register, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

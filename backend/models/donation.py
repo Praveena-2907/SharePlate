@@ -9,8 +9,10 @@ from database import Base
 
 class DonationStatus(str, enum.Enum):
     PENDING = "pending"
-    ACCEPTED = "accepted"
+    CLAIMED = "claimed"
+    ASSIGNED = "assigned"
     PICKED_UP = "picked_up"
+    IN_TRANSIT = "in_transit"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
 

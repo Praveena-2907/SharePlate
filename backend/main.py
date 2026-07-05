@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import models  # noqa: F401  ensures all models are registered on Base before create_all
 from config import settings
 from database import Base, engine
-from routers import auth
+from routers import auth, donations, notifications
 
 Base.metadata.create_all(bind=engine)
 
@@ -26,6 +26,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(donations.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health", tags=["health"])

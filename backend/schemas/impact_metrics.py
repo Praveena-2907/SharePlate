@@ -13,4 +13,6 @@ class ImpactMetricsOut(BaseModel):
     meals_rescued: int
     total_donations: int
     total_deliveries: int
+    food_waste_reduced_kg: float
+    community_reach: int
     updated_at: datetime
