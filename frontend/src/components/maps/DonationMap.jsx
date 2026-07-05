@@ -3,9 +3,18 @@ import { StatusBadge } from "../ui/Badge";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-function MapsPlaceholderCard({ donation }) {
+function DonationCard({ donation, selected, onSelect }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 flex gap-4 items-start hover:shadow-soft transition-shadow">
+    <div
+      role="option"
+      aria-selected={selected}
+      className={`bg-white border rounded-2xl p-4 flex gap-4 items-start cursor-pointer hover:shadow-soft transition-all ${
+        selected ? "ring-2 ring-primary border-primary/30" : "border-gray-100 hover:border-gray-200"
+      }`}
+      onClick={() => onSelect(selected ? null : donation.id)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect(selected ? null : donation.id)}
+      tabIndex={0}
+    >
       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
         <Package className="w-5 h-5 text-primary" />
       </div>
@@ -17,15 +26,19 @@ function MapsPlaceholderCard({ donation }) {
         <p className="text-xs text-gray-400 mb-2">
           {donation.quantity} {donation.unit}
         </p>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="truncate">{donation.pickup_address}</span>
+        </div>
         <a
           href={`https://maps.google.com/?q=${encodeURIComponent(donation.pickup_address)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+          aria-label={`Open ${donation.pickup_address} in Google Maps`}
         >
-          <MapPin className="w-3 h-3" />
-          {donation.pickup_address}
-          <ExternalLink className="w-3 h-3 ml-0.5" />
+          Open in Maps <ExternalLink className="w-3 h-3" />
         </a>
       </div>
     </div>
@@ -34,30 +47,25 @@ function MapsPlaceholderCard({ donation }) {
 
 /**
  * Shows a list of donation locations. When VITE_GOOGLE_MAPS_API_KEY is set,
- * each selected donation shows an embedded map. Falls back to styled address cards.
+ * the selected donation shows an embedded map. Falls back to styled address cards.
  */
 export function DonationMap({ donations, selectedId, onSelect }) {
   const selected = donations.find((d) => d.id === selectedId);
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid md:grid-cols-2 gap-4" role="listbox" aria-label="Available donations">
       {/* List side */}
       <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
         {donations.length === 0 && (
           <p className="text-sm text-gray-400 text-center py-8">No donations to display.</p>
         )}
         {donations.map((d) => (
-          <button
+          <DonationCard
             key={d.id}
-            onClick={() => onSelect?.(d.id === selectedId ? null : d.id)}
-            className={`w-full text-left transition-all ${
-              d.id === selectedId
-                ? "ring-2 ring-primary rounded-2xl"
-                : "hover:ring-1 hover:ring-gray-200 rounded-2xl"
-            }`}
-          >
-            <MapsPlaceholderCard donation={d} />
-          </button>
+            donation={d}
+            selected={d.id === selectedId}
+            onSelect={onSelect}
+          />
         ))}
       </div>
 
@@ -86,25 +94,19 @@ export function DonationMap({ donations, selectedId, onSelect }) {
               >
                 Open in Google Maps <ExternalLink className="w-4 h-4" />
               </a>
-              <p className="text-xs text-gray-400 mt-4">
-                Add <code className="bg-gray-100 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> to enable embedded maps.
-              </p>
             </div>
           )
         ) : (
-          <div className="flex flex-col items-center gap-3 text-gray-400">
-            <div
-              className="w-full h-full min-h-[280px] rounded-2xl flex items-center justify-center"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
-                backgroundSize: "24px 24px",
-              }}
-            >
-              <div className="text-center p-6">
-                <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-200" />
-                <p className="text-sm text-gray-400">Select a donation to preview its location</p>
-              </div>
+          <div
+            className="w-full h-full min-h-[280px] rounded-2xl flex items-center justify-center"
+            style={{
+              backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          >
+            <div className="text-center p-6">
+              <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-200" />
+              <p className="text-sm text-gray-400">Select a donation to preview its location</p>
             </div>
           </div>
         )}

@@ -118,12 +118,11 @@ def get_volunteer_analytics(db: Session, user: User) -> dict:
         for year, month in months:
             count = (
                 db.query(func.count(Assignment.id))
-                .join(Donation, Assignment.donation_id == Donation.id)
                 .filter(
                     Assignment.volunteer_id == volunteer.id,
-                    Donation.status == DonationStatus.DELIVERED,
-                    extract("year", Donation.created_at) == year,
-                    extract("month", Donation.created_at) == month,
+                    Assignment.completed_at.isnot(None),
+                    extract("year", Assignment.completed_at) == year,
+                    extract("month", Assignment.completed_at) == month,
                 )
                 .scalar()
                 or 0
@@ -176,12 +175,11 @@ def get_ngo_analytics(db: Session, user: User) -> dict:
             )
             delivered = (
                 db.query(func.count(Assignment.id))
-                .join(Donation, Assignment.donation_id == Donation.id)
                 .filter(
                     Assignment.ngo_id == ngo.id,
-                    Donation.status == DonationStatus.DELIVERED,
-                    extract("year", Donation.created_at) == year,
-                    extract("month", Donation.created_at) == month,
+                    Assignment.completed_at.isnot(None),
+                    extract("year", Assignment.completed_at) == year,
+                    extract("month", Assignment.completed_at) == month,
                 )
                 .scalar()
                 or 0
@@ -242,11 +240,11 @@ def get_admin_analytics(db: Session) -> dict:
             or 0
         )
         delivered_m = (
-            db.query(func.count(Donation.id))
+            db.query(func.count(Assignment.id))
             .filter(
-                Donation.status == DonationStatus.DELIVERED,
-                extract("year", Donation.created_at) == year,
-                extract("month", Donation.created_at) == month,
+                Assignment.completed_at.isnot(None),
+                extract("year", Assignment.completed_at) == year,
+                extract("month", Assignment.completed_at) == month,
             )
             .scalar()
             or 0

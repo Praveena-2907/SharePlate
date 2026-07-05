@@ -21,5 +21,8 @@ def get_my_analytics(
         return analytics_service.get_volunteer_analytics(db, current_user)
     elif current_user.role == UserRole.NGO:
         return analytics_service.get_ngo_analytics(db, current_user)
-    else:  # ADMIN
+    elif current_user.role == UserRole.ADMIN:
         return analytics_service.get_admin_analytics(db)
+    else:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unknown role")

@@ -12,49 +12,52 @@ Share More. Waste Less. Feed Hope. A civic-tech platform connecting food donors,
 
 ## Stack
 
-- **Frontend:** React 18 + Vite, React Router v6, Context API, Tailwind CSS, Axios, lucide-react. Auth is wired to the backend (login, register, `/auth/me`). Role dashboards display mock data from `frontend/src/data/mockData.js` and are not yet wired to the live API.
+- **Frontend:** React 18 + Vite, React Router v6, Context API, Tailwind CSS, Axios, Recharts, lucide-react. Auth wired to backend. All dashboards connected to live `GET /analytics/me` API and live donation CRUD endpoints.
 - **Backend:** FastAPI + SQLAlchemy 2 + PostgreSQL (Replit-managed, `DATABASE_URL`), JWT auth (python-jose + bcrypt), Pydantic v2 schemas, role-based access control (Donor / NGO / Volunteer / Admin).
+
+## Secrets / Env Vars
+
+| Secret | Purpose |
+|---|---|
+| `SESSION_SECRET` | JWT signing key (required) |
+| `DATABASE_URL` | Replit-managed PostgreSQL (auto-set) |
+| `VITE_GOOGLE_MAPS_API_KEY` | Google Maps Embed API for location picker / donation map / route map. App degrades gracefully (address cards + "Open in Maps" links) if absent. |
 
 ## Where things live
 
 - `frontend/` — React/Vite app (plain npm project, not in the pnpm workspace)
   - `src/api/client.js` — Axios instance with `/pyapi` base URL + JWT interceptor
-  - `src/api/auth.js` — `loginUser`, `registerUser`, `getCurrentUser` API helpers
-  - `src/context/AuthContext.jsx` — auth state (login, register, logout, initializing) via Context API + localStorage JWT
-  - `src/pages/Landing.jsx` — landing page (hero, stats, features, how it works)
-  - `src/pages/auth/` — Login, Register, ForgotPassword, RoleSelection
-  - `src/pages/dashboards/` — DonorDashboard, NgoDashboard, VolunteerDashboard, AdminDashboard (mock data only)
-  - `src/data/mockData.js` — mock stats, donations, NGOs, volunteers, etc. used by dashboards
-  - `tailwind.config.js` — design tokens (primary green #2E7D32, secondary orange #F59E0B, 16px radius)
+  - `src/api/auth.js` — `loginUser`, `registerUser`, `getCurrentUser`
+  - `src/api/analytics.js` — `getMyAnalytics()` → `GET /analytics/me`
+  - `src/api/donations.js` — full CRUD + lifecycle helpers
+  - `src/context/AuthContext.jsx` — auth state via Context API + localStorage JWT
+  - `src/hooks/useAnalytics.js` — `useAnalytics()` hook (loading / error / refetch)
+  - `src/pages/Landing.jsx` — landing page
+  - `src/pages/auth/` — Login, Register (admin option removed), ForgotPassword, RoleSelection
+  - `src/pages/dashboards/` — DonorDashboard, NgoDashboard, VolunteerDashboard, AdminDashboard (all connected to live API)
+  - `src/data/mockData.js` — used only for admin pending-approvals placeholder; everything else is live data
+  - `src/components/ui/` — StatCard, StatCardSkeleton, Badge, StatusBadge, RoleBadge, EmptyState, ErrorState, InlineError, Spinner, SkeletonCard
+  - `src/components/charts/` — TrendChart (SingleAreaChart, DualAreaChart, SimpleBarChart, ChartCard), DonutChart
+  - `src/components/maps/` — LocationPicker, DonationMap, RouteMap (all with graceful fallbacks when API key absent)
+  - `tailwind.config.js` — design tokens (primary green #2E7D32, secondary orange #F59E0B) + fadeIn/slide-up animations
   - `vite.config.js` — proxies `/pyapi/*` → `http://localhost:8000/*`
+
 - `backend/` — FastAPI app
-  - `main.py` — app entry, CORS, router registration, `Base.metadata.create_all` on startup
-  - `config.py` — pydantic-settings `Settings` (reads `DATABASE_URL`, `SESSION_SECRET`)
+  - `main.py` — app entry, CORS, router registration (auth, donations, notifications, analytics)
+  - `config.py` — pydantic-settings `Settings`
   - `database.py` — SQLAlchemy engine / SessionLocal / Base / `get_db`
-  - `auth.py` — bcrypt hashing, JWT create/decode, `get_current_user`, `require_roles` RBAC factory
-  - `models/` — User (role enum: donor/ngo/volunteer/admin), NGO, Volunteer, Donation, Assignment, Notification, ImpactMetrics
+  - `auth.py` — bcrypt, JWT, `get_current_user`, `require_roles` RBAC
+  - `models/` — User, NGO, Volunteer, Donation, Assignment, Notification, ImpactMetrics
   - `routers/auth.py` — `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
-  - `routers/donations.py` — full CRUD + lifecycle endpoints (claim, assign-volunteer, pickup, transit, deliver)
+  - `routers/donations.py` — full CRUD + lifecycle (claim, assign-volunteer, pickup, transit, deliver)
   - `routers/notifications.py` — `GET /notifications`, `PATCH /notifications/{id}/read`
-  - `services/auth_service.py` — register/login/token business logic; blocks admin self-registration
-- `database/` — reserved for future migrations
-- `artifacts/`, `lib/`, `scripts/` — Replit workspace scaffolding; not used for SharePlate app code
+  - `routers/analytics.py` — `GET /analytics/me` (role-dispatched, returns 403 for unknown roles)
+  - `services/auth_service.py` — blocks admin self-registration
+  - `services/analytics_service.py` — role-specific DB aggregates; delivery trends use `Assignment.completed_at` for accuracy
 
-## Architecture decisions
+## User Preferences
 
-- Plain `frontend/` + `backend/` layout instead of pnpm monorepo. Only `artifacts/web` exists as a routing-only artifact to make the frontend reachable via the shared proxy.
-- Public registration only allows `donor`, `ngo`, `volunteer` roles (server-side enforced). Admin accounts must be provisioned separately.
-- Frontend auth is integrated with the backend; dashboards still use mock data (not wired to donations/notifications APIs yet).
-
-## User preferences
-
-- Do not use the pnpm monorepo/artifact structure for SharePlate. All application code lives in `frontend/`, `backend/`, `database/`.
-- Backend must be FastAPI + PostgreSQL + SQLAlchemy + JWT, plain Python.
-- Dashboard data integration with the live backend is deferred.
-
-## Gotchas
-
-- The shared reverse proxy only routes paths registered via `.replit-artifact/artifact.toml`. `Backend API` workflow has no artifact.toml and is only reachable on localhost:8000 (or via the Vite `/pyapi` proxy in dev).
-- Screenshot/preview tooling: use `artifactDirName: "web"` (the `artifacts/web` dir), not `frontend/`.
-- Python workflow `$PORT` must be expanded inside `sh -c '...'` — bare `--port $PORT` in the workflow command is not shell-expanded and uvicorn will fail.
-- Do not use passlib's `CryptContext` with bcrypt 5.x — use the `bcrypt` package directly (see `backend/auth.py`).
+- Do not migrate project to monorepo structure — keep `frontend/` + `backend/` layout as-is
+- Maps use Google Maps Embed API iframes (no JS SDK / npm package)
+- Charts use Recharts only
+- Analytics use real DB queries — no mock data for metrics
