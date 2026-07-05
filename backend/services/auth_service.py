@@ -9,7 +9,16 @@ from schemas.token import Token
 from schemas.user import UserCreate, UserLogin
 
 
+_PUBLIC_ROLES = {UserRole.DONOR, UserRole.NGO, UserRole.VOLUNTEER}
+
+
 def register_user(db: Session, user_in: UserCreate) -> User:
+    if user_in.role not in _PUBLIC_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin accounts cannot be created through public registration.",
+        )
+
     existing_user = db.query(User).filter(User.email == user_in.email).first()
     if existing_user:
         raise HTTPException(

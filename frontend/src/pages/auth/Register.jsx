@@ -8,7 +8,6 @@ const roles = [
   { id: "donor", label: "Donor" },
   { id: "ngo", label: "NGO" },
   { id: "volunteer", label: "Volunteer" },
-  { id: "admin", label: "Administrator" },
 ];
 
 export default function Register() {
