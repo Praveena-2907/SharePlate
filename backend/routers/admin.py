@@ -7,7 +7,6 @@ from auth import require_roles
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 @router.get("/pending-users")
-@router.get("/pending-users")
 def get_pending_users(
     db: Session = Depends(get_db)
 ):
@@ -16,16 +15,18 @@ def get_pending_users(
         .filter(User.is_active == False)
         .all()
     )
-
     return [
-        {
-            "id": user.id,
-            "name": user.full_name,
-            "email": user.email,
-            "role": user.role.value
-        }
-        for user in users
-    ]
+    {
+        "id": user.id,
+        "name": user.full_name,
+        "email": user.email,
+        "role": user.role.value,
+        "submittedAt": user.created_at.isoformat() if user.created_at else None
+    }
+    for user in users
+]
+
+   
 @router.put("/approve/{user_id}")
 def approve_user(
     user_id: int,
