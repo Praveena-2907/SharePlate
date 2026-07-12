@@ -49,6 +49,7 @@ const [pendingList, setPendingList] = useState([]);
 
 useEffect(() => {
   fetch("https://share-plate-api-server.vercel.app/admin/pending-users")
+    .then((res) => res.json())
     .then((data) => {
       console.log("Pending users:", data);
 
