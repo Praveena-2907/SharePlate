@@ -51,23 +51,14 @@ useEffect(() => {
   fetch("https://share-plate-api-server.vercel.app/admin/pending-users")
     .then((res) => res.json())
     .then((data) => {
-      console.log("Pending users:", data);
+      console.log("Is array:", Array.isArray(data));
+      console.log("Data:", data);
 
-      if (!Array.isArray(data)) return;
-
-      const formattedData = data.map((user) => ({
-        id: user.id,
-        name: user.name,
-        type: user.role.toUpperCase(),
-        submittedAt: new Date().toISOString(),
-      }));
-
-      setPendingList(formattedData);
+      setPendingList(data);
     })
-    .catch((error) => {
-      console.error("Error fetching pending users:", error);
-    });
+    .catch((err) => console.error(err));
 }, []);
+console.log("pendingList state:", pendingList);
   const handleLogout = () => { logout(); navigate("/"); };
 
   const mealsRescued = analytics?.total_meals_rescued ?? 0;
