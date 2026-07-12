@@ -281,8 +281,9 @@ console.log("pendingList state:", pendingList);
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-semibold text-ink text-sm">{item.name}</h4>
-                        <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded">{item.type}</span>
-                      </div>
+<span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded">
+  {item.role?.toUpperCase()}
+</span>                      </div>
                       <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
                         {new Date(item.submittedAt).toLocaleDateString()}
