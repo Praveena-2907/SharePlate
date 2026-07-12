@@ -48,7 +48,7 @@ export default function AdminDashboard() {
 const [pendingList, setPendingList] = useState([]);
 
 useEffect(() => {
-fetch("https://share-plate-api-server.vercel.app/admin/pending")    .then((res) => res.json())
+  fetch("https://share-plate-api-server.vercel.app/admin/pending-users")
     .then((data) => {
       console.log("Pending users:", data);
 
@@ -299,9 +299,9 @@ fetch("https://share-plate-api-server.vercel.app/admin/pending")    .then((res) 
                     <div className="flex gap-1.5">
                       <button
   onClick={() => {
-fetch("https://share-plate-api-server.vercel.app/admin/approve", {
-      method: "PUT",
-    })
+fetch(`https://share-plate-api-server.vercel.app/admin/approve/${item.id}`, {
+  method: "PUT",
+})
       .then(() => {
         setPendingList((p) =>
           p.filter((a) => a.id !== item.id)
