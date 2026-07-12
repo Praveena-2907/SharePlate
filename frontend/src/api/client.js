@@ -15,23 +15,31 @@ export function setToken(token) {
 }
 
 const apiClient = axios.create({
-  baseURL: "/pyapi",
+  baseURL: "https://share-plate-api-server.vercel.app",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 apiClient.interceptors.request.use((config) => {
   const token = getToken();
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
 export function extractErrorMessage(error) {
   const detail = error?.response?.data?.detail;
+
   if (typeof detail === "string") return detail;
+
   if (Array.isArray(detail) && detail.length > 0) {
     return detail.map((d) => d.msg).join(", ");
   }
+
   return error?.message || "Something went wrong. Please try again.";
 }
 
