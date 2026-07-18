@@ -142,6 +142,25 @@ def assign_volunteer(db: Session, donation_id: int, volunteer_id: int, ngo_user:
     volunteer = db.query(Volunteer).filter(Volunteer.id == volunteer_id).first()
     if volunteer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Volunteer not found")
+    if volunteer.availability != "available":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Volunteer is not currently available",
+        )
+
+    active_assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.volunteer_id == volunteer.id,
+            Assignment.status.in_([AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS]),
+        )
+        .first()
+    )
+    if active_assignment is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Volunteer is already assigned to another pickup",
+        )
 
     assignment.volunteer_id = volunteer.id
     donation.status = DonationStatus.ASSIGNED

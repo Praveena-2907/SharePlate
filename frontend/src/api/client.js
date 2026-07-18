@@ -15,7 +15,7 @@ export function setToken(token) {
 }
 
 const apiClient = axios.create({
-  baseURL: "https://share-plate-api-server.vercel.app",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "https://share-plate-api-server.vercel.app",
   headers: {
     "Content-Type": "application/json",
   },

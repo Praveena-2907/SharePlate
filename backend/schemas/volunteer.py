@@ -19,3 +19,15 @@ class VolunteerOut(VolunteerBase):
     id: int
     user_id: int
     created_at: datetime
+
+
+class VolunteerAvailabilityUpdate(BaseModel):
+    is_available: bool
+
+
+class VolunteerAvailabilityOut(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    availability: str | None = None
+    is_available: bool

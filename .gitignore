@@ -51,7 +51,7 @@ Thumbs.db
 # Environment files
 .env
 backend/.env
-
+backend/.venv/
 # Python cache
 __pycache__/
 *.pyc

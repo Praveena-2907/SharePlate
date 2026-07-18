@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { assignVolunteer, claimDonation, listDonations } from "../../api/donations";
+import { listAvailableVolunteers } from "../../api/volunteers";
 import { extractErrorMessage } from "../../api/client";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import NotificationsBell from "../../components/NotificationsBell";
@@ -35,6 +36,8 @@ export default function NgoDashboard() {
   const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [volunteerInputs, setVolunteerInputs] = useState({});
+  const [availableVolunteers, setAvailableVolunteers] = useState([]);
+  const [volunteersLoading, setVolunteersLoading] = useState(true);
   const [selectedMapId, setSelectedMapId] = useState(null);
 
   const fetchDonations = () => {
@@ -46,7 +49,18 @@ export default function NgoDashboard() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchDonations(); }, []);
+  const fetchAvailableVolunteers = () => {
+    setVolunteersLoading(true);
+    listAvailableVolunteers()
+      .then(setAvailableVolunteers)
+      .catch((e) => setActionError(extractErrorMessage(e)))
+      .finally(() => setVolunteersLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDonations();
+    fetchAvailableVolunteers();
+  }, []);
 
   const handleLogout = () => { logout(); navigate("/"); };
 
@@ -75,6 +89,7 @@ export default function NgoDashboard() {
       const updated = await assignVolunteer(id, vid);
       setDonations((p) => p.map((d) => (d.id === id ? updated : d)));
       setVolunteerInputs((p) => { const n = { ...p }; delete n[id]; return n; });
+      fetchAvailableVolunteers();
     } catch (e) {
       setActionError(extractErrorMessage(e));
     } finally {
@@ -115,19 +130,31 @@ export default function NgoDashboard() {
             {busyId === donation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Claim"}
           </button>
         ) : donation.status === "claimed" ? (
-          <div className="flex gap-2 items-center">
-            <input
-              type="number"
-              placeholder="Volunteer ID"
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <select
               value={volunteerInputs[donation.id] || ""}
               onChange={(e) => setVolunteerInputs((p) => ({ ...p, [donation.id]: e.target.value }))}
-              className="w-28 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              aria-label="Volunteer ID"
-            />
+              disabled={volunteersLoading || availableVolunteers.length === 0}
+              className="w-full sm:w-48 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-50 disabled:text-gray-400"
+              aria-label="Available volunteer"
+            >
+              <option value="">
+                {volunteersLoading
+                  ? "Loading volunteers..."
+                  : availableVolunteers.length === 0
+                    ? "No volunteers available"
+                    : "Select volunteer"}
+              </option>
+              {availableVolunteers.map((volunteer) => (
+                <option key={volunteer.id} value={volunteer.id}>
+                  {volunteer.full_name}
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => handleAssign(donation.id)}
-              disabled={busyId === donation.id}
-              className="bg-primary hover:bg-primary-hover disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow-soft"
+              disabled={busyId === donation.id || volunteersLoading || availableVolunteers.length === 0}
+              className="bg-primary hover:bg-primary-hover disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 shadow-soft"
             >
               {busyId === donation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Truck className="w-4 h-4" />Assign</>}
             </button>

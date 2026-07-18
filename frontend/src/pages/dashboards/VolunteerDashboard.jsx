@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { listDonations, markDelivered, markPickup, markTransit } from "../../api/donations";
+import { getMyVolunteerAvailability, updateMyVolunteerAvailability } from "../../api/volunteers";
 import { extractErrorMessage } from "../../api/client";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import NotificationsBell from "../../components/NotificationsBell";
@@ -14,7 +15,7 @@ import { ChartCard, SimpleBarChart } from "../../components/charts/TrendChart";
 import { RouteMap } from "../../components/maps/RouteMap";
 import {
   Heart, LogOut, CheckCircle2, Loader2, Navigation,
-  Bike, Utensils, Activity, ChevronDown, ChevronUp,
+  Bike, Utensils, Activity, ChevronDown, ChevronUp, Power,
 } from "lucide-react";
 
 export default function VolunteerDashboard() {
@@ -28,6 +29,9 @@ export default function VolunteerDashboard() {
   const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
 
   const fetchDonations = () => {
     setLoading(true);
@@ -38,7 +42,18 @@ export default function VolunteerDashboard() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchDonations(); }, []);
+  const fetchAvailability = () => {
+    setAvailabilityLoading(true);
+    getMyVolunteerAvailability()
+      .then((profile) => setIsAvailable(profile.is_available))
+      .catch((e) => setActionError(extractErrorMessage(e)))
+      .finally(() => setAvailabilityLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDonations();
+    fetchAvailability();
+  }, []);
 
   const handleLogout = () => { logout(); navigate("/"); };
 
@@ -57,6 +72,19 @@ export default function VolunteerDashboard() {
       setActionError(extractErrorMessage(e));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const toggleAvailability = async () => {
+    setActionError("");
+    setAvailabilityBusy(true);
+    try {
+      const updated = await updateMyVolunteerAvailability(!isAvailable);
+      setIsAvailable(updated.is_available);
+    } catch (e) {
+      setActionError(extractErrorMessage(e));
+    } finally {
+      setAvailabilityBusy(false);
     }
   };
 
@@ -90,9 +118,23 @@ export default function VolunteerDashboard() {
       </nav>
 
       <main className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full space-y-6">
-        <div className="animate-fadeIn">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-ink">My Deliveries</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage active routes and track your impact.</p>
+        <div className="animate-fadeIn flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-ink">My Deliveries</h1>
+            <p className="text-gray-400 text-sm mt-1">Manage active routes and track your impact.</p>
+          </div>
+          <button
+            onClick={toggleAvailability}
+            disabled={availabilityLoading || availabilityBusy}
+            className={`w-full md:w-auto px-5 py-3 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-soft disabled:opacity-60 ${
+              isAvailable
+                ? "bg-status-success text-white hover:bg-status-success/90"
+                : "bg-white text-gray-500 border border-gray-200 hover:border-primary hover:text-primary"
+            }`}
+          >
+            {availabilityBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+            {availabilityLoading ? "Checking availability" : isAvailable ? "Available: Yes" : "Available: No"}
+          </button>
         </div>
 
         {/* Analytics */}
